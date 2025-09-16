@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Download, Eye, FileText, Receipt } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const ClientPortal = () => {
   const [orderNumber, setOrderNumber] = useState("");
@@ -29,40 +30,100 @@ const ClientPortal = () => {
 
     setIsLoading(true);
     
-    // Simulate API call - Replace with actual Supabase integration
-    setTimeout(() => {
-      // Mock data - Replace with real data from Supabase
-      const mockResults = [
-        {
-          id: 1,
-          type: "Orden de Compra",
-          filename: `OC_${orderNumber}_${new Date().toISOString().split('T')[0]}.pdf`,
-          uploadDate: "2024-01-15",
-          size: "2.3 MB"
-        },
-        {
-          id: 2,
-          type: "Remisión",
-          filename: `REM_${orderNumber}_${new Date().toISOString().split('T')[0]}.pdf`,
-          uploadDate: "2024-01-16", 
-          size: "1.8 MB"
+    try {
+      const { data: purchaseOrder, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('order_number', orderNumber)
+        .eq('sede', selectedSede)
+        .single();
+
+      if (poError) {
+        if (poError.code === 'PGRST116') {
+          toast.error("No se encontraron documentos para esta orden y sede");
+          setSearchResults([]);
+          return;
         }
-      ];
-      
-      setSearchResults(mockResults);
+        throw poError;
+      }
+
+      const { data: documents, error: docsError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('purchase_order_id', purchaseOrder.id);
+
+      if (docsError) throw docsError;
+
+      if (!documents || documents.length === 0) {
+        toast.error("No se encontraron documentos para esta orden");
+        setSearchResults([]);
+        return;
+      }
+
+      const formatFileSize = (bytes: number) => {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+      };
+
+      const results = documents.map(doc => ({
+        id: doc.id,
+        type: doc.file_type === 'orden_compra' ? 'Orden de Compra' : 'Remisión',
+        filename: doc.original_filename,
+        uploadDate: new Date(doc.created_at).toLocaleDateString(),
+        size: formatFileSize(doc.file_size),
+        file_path: doc.file_path
+      }));
+
+      setSearchResults(results);
+      toast.success(`Se encontraron ${results.length} documento(s)`);
+    } catch (error: any) {
+      toast.error(`Error al buscar documentos: ${error.message}`);
+      setSearchResults([]);
+    } finally {
       setIsLoading(false);
-      toast.success("Documentos encontrados");
-    }, 1500);
+    }
   };
 
-  const handleDownload = (filename: string) => {
-    // Simulate download - Replace with actual file serving from Supabase
-    toast.success(`Descargando ${filename}...`);
+  const handleDownload = async (doc: any) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('purchase-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success(`Descargando ${doc.filename}...`);
+    } catch (error: any) {
+      toast.error(`Error al descargar: ${error.message}`);
+    }
   };
 
-  const handlePreview = (filename: string) => {
-    // Simulate preview - Replace with actual file preview
-    toast.info(`Abriendo vista previa de ${filename}...`);
+  const handlePreview = async (doc: any) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('purchase-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+      
+      toast.info(`Abriendo vista previa de ${doc.filename}...`);
+    } catch (error: any) {
+      toast.error(`Error al abrir vista previa: ${error.message}`);
+    }
   };
 
   return (
@@ -166,7 +227,7 @@ const ClientPortal = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePreview(doc.filename)}
+                      onClick={() => handlePreview(doc)}
                     >
                       <Eye className="h-4 w-4" />
                       Vista Previa
@@ -174,7 +235,7 @@ const ClientPortal = () => {
                     <Button
                       variant="corporate"
                       size="sm"
-                      onClick={() => handleDownload(doc.filename)}
+                      onClick={() => handleDownload(doc)}
                     >
                       <Download className="h-4 w-4" />
                       Descargar

@@ -5,8 +5,7 @@ import { toast } from "sonner";
 
 const AdminAccess = () => {
   const handleAdminLogin = () => {
-    // This will be handled by Supabase authentication
-    toast.info("Funcionalidad de login será habilitada con la integración de Supabase");
+    window.location.href = "/auth";
   };
 
   return (
