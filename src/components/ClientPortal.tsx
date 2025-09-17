@@ -249,6 +249,7 @@ const ClientPortal = () => {
               <Search className="h-4 w-4 mr-2" />
               Buscar por Orden
             </Button>
+            {/*
             <Button
               variant={searchMode === 'by-sede' ? 'default' : 'ghost'}
               size="sm"
@@ -261,6 +262,7 @@ const ClientPortal = () => {
               <ShoppingCart className="h-4 w-4 mr-2" />
               Explorar por Sede
             </Button>
+            */}
           </div>
         </CardContent>
       </Card>
