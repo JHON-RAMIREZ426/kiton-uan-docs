@@ -120,7 +120,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      validate_order_access: {
+        Args: { p_order_number: string; p_sede: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          order_number: string
+          sede: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

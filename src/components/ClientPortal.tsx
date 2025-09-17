@@ -31,21 +31,26 @@ const ClientPortal = () => {
     setIsLoading(true);
     
     try {
-      const { data: purchaseOrder, error: poError } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('order_number', orderNumber)
-        .eq('sede', selectedSede)
-        .single();
+      // Use the secure function to validate and get order data
+      const { data: orders, error: poError } = await supabase
+        .rpc('validate_order_access', {
+          p_order_number: orderNumber,
+          p_sede: selectedSede
+        });
 
       if (poError) {
-        if (poError.code === 'PGRST116') {
-          toast.error("No se encontraron documentos para esta orden y sede");
-          setSearchResults([]);
-          return;
-        }
-        throw poError;
+        toast.error("Error al buscar la orden de compra");
+        setSearchResults([]);
+        return;
       }
+
+      if (!orders || orders.length === 0) {
+        toast.error("No se encontraron documentos para esta orden y sede");
+        setSearchResults([]);
+        return;
+      }
+
+      const purchaseOrder = orders[0]; // Get the first (and should be only) result
 
       const { data: documents, error: docsError } = await supabase
         .from('documents')
