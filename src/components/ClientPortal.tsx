@@ -18,6 +18,7 @@ const ClientPortal = () => {
 
   const sedes = [
     "Bogotá - Sede Principal",
+    "casa brayan",
     "Medellín - Sede Norte", 
     "Cali - Sede Sur",
     "Barranquilla - Sede Caribe",
