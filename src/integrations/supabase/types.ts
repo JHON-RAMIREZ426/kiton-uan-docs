@@ -120,6 +120,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_orders_by_sede: {
+        Args: { p_sede: string }
+        Returns: {
+          created_at: string
+          id: string
+          order_number: string
+          sede: string
+        }[]
+      }
       validate_order_access: {
         Args: { p_order_number: string; p_sede: string }
         Returns: {

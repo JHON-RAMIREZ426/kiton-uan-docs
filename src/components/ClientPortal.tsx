@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Eye, FileText, Receipt } from "lucide-react";
+import { Search, Download, Eye, FileText, Receipt, ArrowLeft, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,18 +11,21 @@ const ClientPortal = () => {
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedSede, setSelectedSede] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchMode, setSearchMode] = useState<'by-order' | 'by-sede'>('by-order');
 
   const sedes = [
     "Bogotá - Sede Principal",
-    "Medellín - Sede Norte",
+    "Medellín - Sede Norte", 
     "Cali - Sede Sur",
     "Barranquilla - Sede Caribe",
     "Bucaramanga - Sede Oriental",
     "Pereira - Sede Eje Cafetero"
   ];
 
-  const handleSearch = async () => {
+  const handleSearchByOrder = async () => {
     if (!orderNumber || !selectedSede) {
       toast.error("Por favor completa todos los campos");
       return;
@@ -91,6 +94,86 @@ const ClientPortal = () => {
     }
   };
 
+  const handleSearchBySede = async () => {
+    if (!selectedSede) {
+      toast.error("Por favor selecciona una sede");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data: orders, error } = await supabase
+        .rpc('get_orders_by_sede', {
+          p_sede: selectedSede
+        });
+
+      if (error) {
+        toast.error("Error al buscar órdenes de compra");
+        setAvailableOrders([]);
+        return;
+      }
+
+      if (!orders || orders.length === 0) {
+        toast.error("No se encontraron órdenes de compra para esta sede");
+        setAvailableOrders([]);
+        return;
+      }
+
+      setAvailableOrders(orders);
+      toast.success(`Se encontraron ${orders.length} orden(es) de compra`);
+    } catch (error: any) {
+      toast.error(`Error al buscar órdenes: ${error.message}`);
+      setAvailableOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectOrder = async (order: any) => {
+    setSelectedOrder(order);
+    setIsLoading(true);
+
+    try {
+      const { data: documents, error: docsError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('purchase_order_id', order.id);
+
+      if (docsError) throw docsError;
+
+      if (!documents || documents.length === 0) {
+        toast.error("No se encontraron documentos para esta orden");
+        setSearchResults([]);
+        return;
+      }
+
+      const formatFileSize = (bytes: number) => {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+      };
+
+      const results = documents.map(doc => ({
+        id: doc.id,
+        type: doc.file_type === 'orden_compra' ? 'Orden de Compra' : 'Remisión',
+        filename: doc.original_filename,
+        uploadDate: new Date(doc.created_at).toLocaleDateString(),
+        size: formatFileSize(doc.file_size),
+        file_path: doc.file_path
+      }));
+
+      setSearchResults(results);
+      toast.success(`Se encontraron ${results.length} documento(s) para la orden ${order.order_number}`);
+    } catch (error: any) {
+      toast.error(`Error al buscar documentos: ${error.message}`);
+      setSearchResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDownload = async (doc: any) => {
     try {
       const { data, error } = await supabase.storage
@@ -131,6 +214,14 @@ const ClientPortal = () => {
     }
   };
 
+  const resetSearch = () => {
+    setOrderNumber("");
+    setSelectedSede("");
+    setSearchResults([]);
+    setAvailableOrders([]);
+    setSelectedOrder(null);
+  };
+
   return (
     <div className="space-y-8">
       <div className="text-center space-y-4">
@@ -138,33 +229,112 @@ const ClientPortal = () => {
           Consulta de Órdenes de Compra
         </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Ingresa el número de orden y la sede para acceder a tus documentos de compra y remisiones
+          Busca por número de orden específico o explora todas las órdenes disponibles por sede
         </p>
       </div>
 
+      {/* Search Mode Selector */}
       <Card className="max-w-2xl mx-auto shadow-elegant">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" />
-            Buscar Documentos
-          </CardTitle>
-          <CardDescription>
-            Completa la información para encontrar tus documentos
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Número de Orden de Compra
-              </label>
-              <Input
-                placeholder="Ej: OC-2024-001234"
-                value={orderNumber}
-                onChange={(e) => setOrderNumber(e.target.value)}
-              />
+        <CardContent className="pt-6">
+          <div className="flex gap-2 p-1 bg-muted rounded-lg">
+            <Button
+              variant={searchMode === 'by-order' ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                setSearchMode('by-order');
+                resetSearch();
+              }}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Buscar por Orden
+            </Button>
+            <Button
+              variant={searchMode === 'by-sede' ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                setSearchMode('by-sede');
+                resetSearch();
+              }}
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Explorar por Sede
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Search by Order Number */}
+      {searchMode === 'by-order' && (
+        <Card className="max-w-2xl mx-auto shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              Buscar por Número de Orden
+            </CardTitle>
+            <CardDescription>
+              Ingresa el número de orden y la sede para encontrar documentos específicos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Número de Orden de Compra
+                </label>
+                <Input
+                  placeholder="Ej: OC-2024-001234"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Sede de Compra
+                </label>
+                <Select value={selectedSede} onValueChange={setSelectedSede}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una sede" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sedes.map((sede) => (
+                      <SelectItem key={sede} value={sede}>
+                        {sede}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
+            <Button 
+              onClick={handleSearchByOrder} 
+              className="w-full" 
+              variant="hero"
+              size="lg"
+              disabled={isLoading}
+            >
+              {isLoading ? "Buscando..." : "Buscar Documentos"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Search by Sede */}
+      {searchMode === 'by-sede' && !selectedOrder && (
+        <Card className="max-w-2xl mx-auto shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              Explorar Órdenes por Sede
+            </CardTitle>
+            <CardDescription>
+              Selecciona una sede para ver todas las órdenes de compra disponibles
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 Sede de Compra
@@ -182,20 +352,78 @@ const ClientPortal = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
+            <Button 
+              onClick={handleSearchBySede} 
+              className="w-full" 
+              variant="hero"
+              size="lg"
+              disabled={isLoading}
+            >
+              {isLoading ? "Buscando..." : "Buscar Órdenes"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Available Orders List */}
+      {searchMode === 'by-sede' && availableOrders.length > 0 && !selectedOrder && (
+        <Card className="max-w-4xl mx-auto shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-secondary" />
+              Órdenes de Compra Disponibles
+            </CardTitle>
+            <CardDescription>
+              Se encontraron {availableOrders.length} orden(es) para {selectedSede}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {availableOrders.map((order) => (
+                <div 
+                  key={order.id} 
+                  className="flex items-center justify-between p-4 border border-border rounded-lg bg-gradient-subtle hover:shadow-card transition-smooth cursor-pointer"
+                  onClick={() => handleSelectOrder(order)}
+                >
+                  <div className="flex items-center space-x-4">
+                    <Receipt className="h-8 w-8 text-primary" />
+                    <div>
+                      <h4 className="font-medium text-foreground">{order.order_number}</h4>
+                      <p className="text-sm text-muted-foreground">{order.sede}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Creada: {new Date(order.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Ver Documentos
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Back button when viewing selected order */}
+      {selectedOrder && (
+        <div className="max-w-4xl mx-auto">
           <Button 
-            onClick={handleSearch} 
-            className="w-full" 
-            variant="hero"
-            size="lg"
-            disabled={isLoading}
+            variant="outline" 
+            onClick={() => {
+              setSelectedOrder(null);
+              setSearchResults([]);
+            }}
+            className="mb-4"
           >
-            {isLoading ? "Buscando..." : "Buscar Documentos"}
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver a la lista de órdenes
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
+      {/* Documents Results */}
       {searchResults.length > 0 && (
         <Card className="max-w-4xl mx-auto shadow-elegant">
           <CardHeader>
@@ -204,7 +432,10 @@ const ClientPortal = () => {
               Documentos Encontrados
             </CardTitle>
             <CardDescription>
-              Se encontraron {searchResults.length} documento(s) para la orden {orderNumber}
+              {selectedOrder 
+                ? `Documentos para la orden ${selectedOrder.order_number}`
+                : `Se encontraron ${searchResults.length} documento(s) para la orden ${orderNumber}`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>

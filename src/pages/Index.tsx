@@ -75,32 +75,6 @@ const Index = () => {
       {/* Features Section */}
       <Features />
 
-      {/* Supabase Integration Notice */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto p-8 bg-card border border-border rounded-lg shadow-elegant">
-            <h3 className="text-2xl font-bold text-foreground mb-4">
-              🚀 ¡Próximo Paso: Integración con Base de Datos!
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Para habilitar la funcionalidad completa (autenticación de administradores, almacenamiento de archivos, 
-              y gestión de órdenes), necesitas conectar este proyecto con Supabase.
-            </p>
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4">
-              <p className="text-sm text-foreground">
-                <strong>¿Cómo conectar Supabase?</strong><br />
-                Haz clic en el botón verde "Supabase" en la parte superior derecha de la interfaz de Lovable 
-                y sigue las instrucciones para conectar tu base de datos.
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Una vez conectado, podremos implementar login seguro, almacenamiento de archivos, 
-              y todas las funcionalidades avanzadas del portal.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="bg-primary text-primary-foreground py-8">
         <div className="container mx-auto px-4 text-center">
