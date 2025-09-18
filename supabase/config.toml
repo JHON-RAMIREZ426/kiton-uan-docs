@@ -1,1 +1,4 @@
 project_id = "cjxsczkbavlpdybvoief"
+
+[functions.send-sede-token]
+verify_jwt = false

@@ -3,13 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Eye, FileText, Receipt, ArrowLeft, ShoppingCart } from "lucide-react";
+import { Search, Download, Eye, FileText, Receipt, ArrowLeft, ShoppingCart, Shield, Mail, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const ClientPortal = () => {
-  const [orderNumber, setOrderNumber] = useState("");
+  // Authentication states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedSede, setSelectedSede] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [tokenValidating, setTokenValidating] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  
+  // Search states
+  const [orderNumber, setOrderNumber] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -26,16 +33,87 @@ const ClientPortal = () => {
     "Pereira - Sede Eje Cafetero"
   ];
 
-  const handleSearchByOrder = async () => {
-    if (!orderNumber || !selectedSede) {
+  // Authentication functions
+  const handleSendToken = async () => {
+    if (!selectedSede) {
+      toast.error("Por favor selecciona una sede");
+      return;
+    }
+
+    setSendingEmail(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sede-token', {
+        body: { sede: selectedSede }
+      });
+
+      if (error) throw error;
+
+      toast.success(data.message || "Código enviado correctamente");
+    } catch (error: any) {
+      toast.error(`Error al enviar código: ${error.message}`);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleValidateToken = async () => {
+    if (!selectedSede || !accessToken) {
       toast.error("Por favor completa todos los campos");
+      return;
+    }
+
+    if (accessToken.length !== 6 || !/^\d+$/.test(accessToken)) {
+      toast.error("El código debe tener 6 dígitos numéricos");
+      return;
+    }
+
+    setTokenValidating(true);
+    
+    try {
+      const { data: tokenData, error } = await supabase
+        .rpc('validate_sede_token', {
+          p_sede: selectedSede,
+          p_token: accessToken
+        });
+
+      if (error) throw error;
+
+      if (!tokenData || tokenData.length === 0) {
+        toast.error("El código ingresado no es válido");
+        return;
+      }
+
+      setIsAuthenticated(true);
+      toast.success(`Acceso autorizado para ${selectedSede}`);
+    } catch (error: any) {
+      toast.error(`Error al validar código: ${error.message}`);
+    } finally {
+      setTokenValidating(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setSelectedSede("");
+    setAccessToken("");
+    setOrderNumber("");
+    setSearchResults([]);
+    setAvailableOrders([]);
+    setSelectedOrder(null);
+    toast.info("Sesión cerrada");
+  };
+
+  // Search functions (same as before)
+  const handleSearchByOrder = async () => {
+    if (!orderNumber) {
+      toast.error("Por favor ingresa un número de orden");
       return;
     }
 
     setIsLoading(true);
     
     try {
-      // Use the secure function to validate and get order data
       const { data: orders, error: poError } = await supabase
         .rpc('validate_order_access', {
           p_order_number: orderNumber,
@@ -54,7 +132,7 @@ const ClientPortal = () => {
         return;
       }
 
-      const purchaseOrder = orders[0]; // Get the first (and should be only) result
+      const purchaseOrder = orders[0];
 
       const { data: documents, error: docsError } = await supabase
         .from('documents')
@@ -96,11 +174,6 @@ const ClientPortal = () => {
   };
 
   const handleSearchBySede = async () => {
-    if (!selectedSede) {
-      toast.error("Por favor selecciona una sede");
-      return;
-    }
-
     setIsLoading(true);
     
     try {
@@ -217,20 +290,142 @@ const ClientPortal = () => {
 
   const resetSearch = () => {
     setOrderNumber("");
-    setSelectedSede("");
     setSearchResults([]);
     setAvailableOrders([]);
     setSelectedOrder(null);
   };
 
+  // Authentication UI
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center space-y-4">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-primary/10 rounded-full">
+              <Shield className="h-12 w-12 text-primary" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+            Acceso Seguro por Sede
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Selecciona tu sede y solicita tu código de acceso para consultar las órdenes de compra
+          </p>
+        </div>
+
+        <Card className="max-w-md mx-auto shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Selección de Sede
+            </CardTitle>
+            <CardDescription>
+              Paso 1: Selecciona tu sede de la Universidad Antonio Nariño
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Sede
+              </label>
+              <Select value={selectedSede} onValueChange={setSelectedSede}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona tu sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sedes.map((sede) => (
+                    <SelectItem key={sede} value={sede}>
+                      {sede}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {selectedSede && (
+          <Card className="max-w-md mx-auto shadow-elegant">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-primary" />
+                Código de Acceso
+              </CardTitle>
+              <CardDescription>
+                Paso 2: Solicita y luego ingresa tu código de 6 dígitos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={handleSendToken}
+                className="w-full"
+                variant="outline"
+                disabled={sendingEmail}
+              >
+                {sendingEmail ? "Enviando..." : "Enviar código al correo registrado"}
+              </Button>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Código de Acceso
+                </label>
+                <Input
+                  placeholder="123456"
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="text-center text-lg font-mono tracking-widest"
+                  maxLength={6}
+                />
+                <p className="text-xs text-muted-foreground text-center">
+                  Ingresa el código de 6 dígitos que recibiste por correo
+                </p>
+              </div>
+
+              <Button
+                onClick={handleValidateToken}
+                className="w-full"
+                variant="hero"
+                disabled={tokenValidating || accessToken.length !== 6}
+              >
+                {tokenValidating ? "Validando..." : "Acceder al Portal"}
+              </Button>
+
+              {accessToken && accessToken.length !== 6 && (
+                <p className="text-sm text-destructive text-center">
+                  El código debe tener exactamente 6 dígitos
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Authenticated Portal UI (same as before but with logout button)
   return (
     <div className="space-y-8">
       <div className="text-center space-y-4">
+        <div className="flex justify-between items-center max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Building2 className="h-6 w-6 text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm text-muted-foreground">Conectado como:</p>
+              <p className="font-semibold text-foreground">{selectedSede}</p>
+            </div>
+          </div>
+          <Button onClick={handleLogout} variant="outline" size="sm">
+            Cerrar Sesión
+          </Button>
+        </div>
+        
         <h2 className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
           Consulta de Órdenes de Compra
         </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Busca por número de orden específico o explora todas las órdenes disponibles por sede
+          Busca por número de orden específico o explora todas las órdenes disponibles
         </p>
       </div>
 
@@ -250,7 +445,6 @@ const ClientPortal = () => {
               <Search className="h-4 w-4 mr-2" />
               Buscar por Orden
             </Button>
-            {/*
             <Button
               variant={searchMode === 'by-sede' ? 'default' : 'ghost'}
               size="sm"
@@ -263,7 +457,6 @@ const ClientPortal = () => {
               <ShoppingCart className="h-4 w-4 mr-2" />
               Explorar por Sede
             </Button>
-            */}
           </div>
         </CardContent>
       </Card>
@@ -277,39 +470,19 @@ const ClientPortal = () => {
               Buscar por Número de Orden
             </CardTitle>
             <CardDescription>
-              Ingresa el número de orden y la sede para encontrar documentos específicos
+              Ingresa el número de orden para encontrar documentos específicos
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Número de Orden de Compra
-                </label>
-                <Input
-                  placeholder="Ej: OC-2024-001234"
-                  value={orderNumber}
-                  onChange={(e) => setOrderNumber(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Sede de Compra
-                </label>
-                <Select value={selectedSede} onValueChange={setSelectedSede}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una sede" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sedes.map((sede) => (
-                      <SelectItem key={sede} value={sede}>
-                        {sede}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Número de Orden de Compra
+              </label>
+              <Input
+                placeholder="Ej: OC-2024-001234"
+                value={orderNumber}
+                onChange={(e) => setOrderNumber(e.target.value)}
+              />
             </div>
 
             <Button 
@@ -331,31 +504,13 @@ const ClientPortal = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-primary" />
-              Explorar Órdenes por Sede
+              Explorar Órdenes de la Sede
             </CardTitle>
             <CardDescription>
-              Selecciona una sede para ver todas las órdenes de compra disponibles
+              Ver todas las órdenes de compra disponibles para {selectedSede}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Sede de Compra
-              </label>
-              <Select value={selectedSede} onValueChange={setSelectedSede}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una sede" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sedes.map((sede) => (
-                    <SelectItem key={sede} value={sede}>
-                      {sede}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <Button 
               onClick={handleSearchBySede} 
               className="w-full" 
