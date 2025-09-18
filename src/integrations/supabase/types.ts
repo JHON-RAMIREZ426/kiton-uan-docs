@@ -115,11 +115,52 @@ export type Database = {
         }
         Relationships: []
       }
+      sede_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          sede: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          sede: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          sede?: string
+          token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_sede_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_or_create_sede_token: {
+        Args: { p_email: string; p_sede: string }
+        Returns: {
+          is_new: boolean
+          token: string
+        }[]
+      }
       get_orders_by_sede: {
         Args: { p_sede: string }
         Returns: {
@@ -138,6 +179,16 @@ export type Database = {
           order_number: string
           sede: string
           updated_at: string
+        }[]
+      }
+      validate_sede_token: {
+        Args: { p_sede: string; p_token: string }
+        Returns: {
+          email: string
+          id: string
+          is_valid: boolean
+          sede: string
+          token: string
         }[]
       }
     }
