@@ -24,15 +24,39 @@ const ClientPortal = () => {
   const [searchMode, setSearchMode] = useState<'by-order' | 'by-sede'>('by-order');
 
   const sedes = [
-    "Bogotá - Sede Principal",
-    "casa brayan",
-    "Medellín - Sede Norte", 
-    "Cali - Sede Sur",
-    "Barranquilla - Sede Caribe",
-    "Bucaramanga - Sede Oriental",
-    "Pereira - Sede Eje Cafetero"
+    // Will be loaded from database
   ];
+  const [availableSedes, setAvailableSedes] = useState<string[]>([]);
 
+  // Load available sedes on component mount
+  useEffect(() => {
+    const loadSedes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sedes')
+          .select('name')
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setAvailableSedes(data.map(sede => sede.name));
+      } catch (error) {
+        console.error('Error loading sedes:', error);
+        // Fallback to hardcoded sedes
+        setAvailableSedes([
+          "Bogotá - Sede Principal",
+          "casa brayan",
+          "Medellín - Sede Norte", 
+          "Cali - Sede Sur",
+          "Barranquilla - Sede Caribe",
+          "Bucaramanga - Sede Oriental",
+          "Pereira - Sede Eje Cafetero"
+        ]);
+      }
+    };
+
+    loadSedes();
+  }, []);
   // Authentication functions
   const handleSendToken = async () => {
     if (!selectedSede) {
@@ -333,7 +357,7 @@ const ClientPortal = () => {
                   <SelectValue placeholder="Selecciona tu sede" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sedes.map((sede) => (
+                  {availableSedes.map((sede) => (
                     <SelectItem key={sede} value={sede}>
                       {sede}
                     </SelectItem>

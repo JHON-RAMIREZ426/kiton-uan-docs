@@ -38,11 +38,29 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Get sede information first
+    const { data: sedeData, error: sedeError } = await supabase
+      .from('sedes')
+      .select('id, name, email')
+      .eq('name', sede)
+      .single();
+
+    if (sedeError || !sedeData) {
+      console.error('Error finding sede:', sedeError);
+      return new Response(
+        JSON.stringify({ error: "Sede no encontrada" }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
     // Get existing token or create new one
     const { data: tokenData, error: tokenError } = await supabase
       .rpc('get_or_create_sede_token', {
         p_sede: sede,
-        p_email: getSedeEmail(sede)
+        p_email: sedeData.email
       });
 
     if (tokenError) {
@@ -72,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email with token
     const emailResponse = await resend.emails.send({
       from: "Portal de Órdenes de Compra <noreply@notificaciones.kitongroup.com>",
-      to: [getSedeEmail(sede)],
+      to: [sedeData.email],
       subject: `Código de acceso para ${sede}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

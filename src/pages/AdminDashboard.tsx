@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, LogOut, Plus, Download, Trash2 } from "lucide-react";
+import { Upload, FileText, LogOut, Plus, Download, Trash2, Building2, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import SedeManagement from "@/components/SedeManagement";
 
 interface Document {
   id: string;
@@ -32,6 +34,7 @@ const AdminDashboard = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+  const [activeTab, setActiveTab] = useState("upload");
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -237,157 +240,182 @@ const AdminDashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Upload Section */}
-        <Card className="shadow-elegant">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
               Subir Documentos
-            </CardTitle>
-            <CardDescription>
-              Cargar archivos de órdenes de compra y remisiones
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleUpload} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="order-number">Número de Orden de Compra</Label>
-                  <Input
-                    id="order-number"
-                    placeholder="Ej: OC-2024-001234"
-                    value={orderNumber}
-                    onChange={(e) => setOrderNumber(e.target.value)}
-                    required
-                  />
-                </div>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Mis Documentos
+            </TabsTrigger>
+            <TabsTrigger value="sedes" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Gestión de Sedes
+            </TabsTrigger>
+          </TabsList>
 
-                <div className="space-y-2">
-                  <Label htmlFor="sede">Sede</Label>
-                  <Select value={selectedSede} onValueChange={setSelectedSede} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona una sede" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sedes.map((sede) => (
-                        <SelectItem key={sede} value={sede}>
-                          {sede}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="file-type">Tipo de Documento</Label>
-                <Select value={fileType} onValueChange={setFileType} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona el tipo de archivo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fileTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="file-upload">Archivos</Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={(e) => setFiles(e.target.files)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Formatos permitidos: PDF, DOC, DOCX, JPG, PNG. Máximo 10MB por archivo.
-                </p>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                variant="corporate"
-                size="lg"
-                disabled={isUploading}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {isUploading ? "Subiendo..." : "Subir Documentos"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Documents List */}
-        <Card className="shadow-elegant">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-secondary" />
-              Documentos Subidos ({documents.length})
-            </CardTitle>
-            <CardDescription>
-              Gestiona los documentos que has subido
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingDocs ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Cargando documentos...</p>
-              </div>
-            ) : documents.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No has subido documentos aún</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg bg-gradient-subtle hover:shadow-card transition-smooth"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <FileText className="h-8 w-8 text-primary" />
-                      <div>
-                        <h4 className="font-medium text-foreground">
-                          {fileTypes.find(t => t.value === doc.file_type)?.label || doc.file_type}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{doc.original_filename}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.purchase_order.order_number} • {doc.purchase_order.sede}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
+          <TabsContent value="upload" className="mt-6">
+            {/* Upload Section */}
+            <Card className="shadow-elegant">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Subir Documentos
+                </CardTitle>
+                <CardDescription>
+                  Cargar archivos de órdenes de compra y remisiones
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUpload} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="order-number">Número de Orden de Compra</Label>
+                      <Input
+                        id="order-number"
+                        placeholder="Ej: OC-2024-001234"
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        required
+                      />
                     </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(doc)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="sede">Sede</Label>
+                      <Select value={selectedSede} onValueChange={setSelectedSede} required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una sede" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sedes.map((sede) => (
+                            <SelectItem key={sede} value={sede}>
+                              {sede}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="file-type">Tipo de Documento</Label>
+                    <Select value={fileType} onValueChange={setFileType} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el tipo de archivo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fileTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="file-upload">Archivos</Label>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => setFiles(e.target.files)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Formatos permitidos: PDF, DOC, DOCX, JPG, PNG. Máximo 10MB por archivo.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    variant="corporate"
+                    size="lg"
+                    disabled={isUploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploading ? "Subiendo..." : "Subir Documentos"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-6">
+            {/* Documents List */}
+            <Card className="shadow-elegant">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-secondary" />
+                  Documentos Subidos ({documents.length})
+                </CardTitle>
+                <CardDescription>
+                  Gestiona los documentos que has subido
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingDocs ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Cargando documentos...</p>
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No has subido documentos aún</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg bg-gradient-subtle hover:shadow-card transition-smooth"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <FileText className="h-8 w-8 text-primary" />
+                          <div>
+                            <h4 className="font-medium text-foreground">
+                              {fileTypes.find(t => t.value === doc.file_type)?.label || doc.file_type}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">{doc.original_filename}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.purchase_order.order_number} • {doc.purchase_order.sede}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownload(doc)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(doc)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="sedes" className="mt-6">
+            <SedeManagement />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
