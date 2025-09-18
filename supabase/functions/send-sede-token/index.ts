@@ -71,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email with token
     const emailResponse = await resend.emails.send({
-      from: "Portal de Órdenes <onboarding@resend.dev>",
+      from: "Portal de Órdenes <noreply@notificaciones.kitongroup.com>",
       to: [getSedeEmail(sede)],
       subject: `Código de acceso para ${sede}`,
       html: `
@@ -145,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
 // Helper function to get email for each sede
 function getSedeEmail(sede: string): string {
   const sedeEmails: { [key: string]: string } = {
-    "Bogotá - Sede Principal": "bogota@universidad.edu.co",
+    "Bogotá - Sede Principal": "comercial@kitongroup.com",
     "Medellín - Sede Norte": "medellin@universidad.edu.co",
     "Cali - Sede Sur": "cali@universidad.edu.co",
     "Barranquilla - Sede Caribe": "barranquilla@universidad.edu.co",
