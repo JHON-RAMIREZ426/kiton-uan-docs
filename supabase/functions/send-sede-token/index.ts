@@ -71,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email with token
     const emailResponse = await resend.emails.send({
-      from: "Portal de Órdenes <noreply@notificaciones.kitongroup.com>",
+      from: "Portal de Órdenes de Compra <noreply@notificaciones.kitongroup.com>",
       to: [getSedeEmail(sede)],
       subject: `Código de acceso para ${sede}`,
       html: `
@@ -146,14 +146,15 @@ const handler = async (req: Request): Promise<Response> => {
 function getSedeEmail(sede: string): string {
   const sedeEmails: { [key: string]: string } = {
     "Bogotá - Sede Principal": "comercial@kitongroup.com",
-    "Medellín - Sede Norte": "medellin@universidad.edu.co",
-    "Cali - Sede Sur": "cali@universidad.edu.co",
-    "Barranquilla - Sede Caribe": "barranquilla@universidad.edu.co",
-    "Bucaramanga - Sede Oriente": "bucaramanga@universidad.edu.co",
+    "Medellín - Sede Norte": "medellin@kitongroup.com",
+    "Cali - Sede Sur": "cali@kitongroup.com",
+    "Barranquilla - Sede Caribe": "barranquilla@kitongroup.com",
+    "Bucaramanga - Sede Oriental": "bucaramanga@kitongroup.com",
+    "Pereira - Sede Eje Cafetero": "pereira@kitongroup.com",
     "casa brayan": "brayan@test.com"
   };
   
-  return sedeEmails[sede] || "admin@universidad.edu.co";
+  return sedeEmails[sede] || "admin@kitongroup.com";
 }
 
 serve(handler);
