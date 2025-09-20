@@ -209,6 +209,7 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
+          is_admin_sede: boolean
           name: string
           phone: string | null
           updated_at: string
@@ -219,6 +220,7 @@ export type Database = {
           email: string
           id?: string
           is_active?: boolean
+          is_admin_sede?: boolean
           name: string
           phone?: string | null
           updated_at?: string
@@ -229,6 +231,7 @@ export type Database = {
           email?: string
           id?: string
           is_active?: boolean
+          is_admin_sede?: boolean
           name?: string
           phone?: string | null
           updated_at?: string
