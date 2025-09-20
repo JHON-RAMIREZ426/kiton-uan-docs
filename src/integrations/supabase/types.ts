@@ -41,6 +41,41 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sede_access: {
+        Row: {
+          admin_id: string
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          sede_id: string
+        }
+        Insert: {
+          admin_id: string
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          sede_id: string
+        }
+        Update: {
+          admin_id?: string
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          sede_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sede_access_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
@@ -95,6 +130,7 @@ export type Database = {
           id: string
           order_number: string
           sede: string
+          sede_id: string | null
           updated_at: string
         }
         Insert: {
@@ -103,6 +139,7 @@ export type Database = {
           id?: string
           order_number: string
           sede: string
+          sede_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -111,9 +148,18 @@ export type Database = {
           id?: string
           order_number?: string
           sede?: string
+          sede_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sede_tokens: {
         Row: {
@@ -123,6 +169,7 @@ export type Database = {
           is_active: boolean
           last_used_at: string | null
           sede: string
+          sede_id: string | null
           token: string
         }
         Insert: {
@@ -132,6 +179,7 @@ export type Database = {
           is_active?: boolean
           last_used_at?: string | null
           sede: string
+          sede_id?: string | null
           token: string
         }
         Update: {
@@ -141,7 +189,49 @@ export type Database = {
           is_active?: boolean
           last_used_at?: string | null
           sede?: string
+          sede_id?: string | null
           token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sede_tokens_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sedes: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -153,6 +243,21 @@ export type Database = {
       generate_sede_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_admin_sedes_with_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          can_edit: boolean
+          can_view: boolean
+          sede_address: string
+          sede_email: string
+          sede_id: string
+          sede_is_active: boolean
+          sede_name: string
+          sede_phone: string
+          token: string
+          token_last_used: string
+        }[]
       }
       get_or_create_sede_token: {
         Args: { p_email: string; p_sede: string }
@@ -168,6 +273,17 @@ export type Database = {
           id: string
           order_number: string
           sede: string
+        }[]
+      }
+      get_sede_token_info: {
+        Args: { p_sede_name: string }
+        Returns: {
+          is_active: boolean
+          last_used_at: string
+          sede_email: string
+          sede_id: string
+          sede_name: string
+          token: string
         }[]
       }
       validate_order_access: {
