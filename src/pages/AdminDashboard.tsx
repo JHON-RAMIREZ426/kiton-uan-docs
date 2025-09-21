@@ -49,7 +49,9 @@ const AdminDashboard = () => {
 
   const fileTypes = [
     { value: "orden_compra", label: "Orden de Compra" },
-    { value: "remision", label: "Remisión" }
+    { value: "remision", label: "Remisión" },
+    { value: "guia_transporte", label: "Guía de Transporte" },
+    { value: "otros", label: "Otros" }
   ];
 
   useEffect(() => {
@@ -265,7 +267,7 @@ const AdminDashboard = () => {
                   Subir Documentos
                 </CardTitle>
                 <CardDescription>
-                  Cargar archivos de órdenes de compra y remisiones
+                  Cargar archivos de órdenes de compra, remisiones, guías de transporte y otros documentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
