@@ -262,6 +262,17 @@ export type Database = {
           token_last_used: string
         }[]
       }
+      get_all_orders_for_admin_sede: {
+        Args: { p_sede: string }
+        Returns: {
+          is_admin_sede: boolean
+          order_created_at: string
+          order_id: string
+          order_number: string
+          order_sede: string
+          sede_name: string
+        }[]
+      }
       get_or_create_sede_token: {
         Args: { p_email: string; p_sede: string }
         Returns: {

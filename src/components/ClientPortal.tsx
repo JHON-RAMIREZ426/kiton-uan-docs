@@ -22,6 +22,8 @@ const ClientPortal = () => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchMode, setSearchMode] = useState<'by-order' | 'by-sede'>('by-order');
+  const [isAdminSede, setIsAdminSede] = useState(false);
+  const [ordersBySede, setOrdersBySede] = useState<{[key: string]: any[]}>({});
 
   const sedes = [
     "Bogotá - Sede Principal",
@@ -99,6 +101,8 @@ const ClientPortal = () => {
     setSearchResults([]);
     setAvailableOrders([]);
     setSelectedOrder(null);
+    setIsAdminSede(false);
+    setOrdersBySede({});
     toast.info("Sesión cerrada");
   };
 
@@ -176,27 +180,67 @@ const ClientPortal = () => {
     
     try {
       const { data: orders, error } = await supabase
-        .rpc('get_orders_by_sede', {
+        .rpc('get_all_orders_for_admin_sede', {
           p_sede: selectedSede
         });
 
       if (error) {
         toast.error("Error al buscar órdenes de compra");
         setAvailableOrders([]);
+        setOrdersBySede({});
         return;
       }
 
       if (!orders || orders.length === 0) {
-        toast.error("No se encontraron órdenes de compra para esta sede");
+        toast.error("No se encontraron órdenes de compra");
         setAvailableOrders([]);
+        setOrdersBySede({});
         return;
       }
 
-      setAvailableOrders(orders);
-      toast.success(`Se encontraron ${orders.length} orden(es) de compra`);
+      // Check if this is an admin sede
+      const adminSedeCheck = orders.length > 0 && orders[0].is_admin_sede;
+      setIsAdminSede(adminSedeCheck);
+
+      if (adminSedeCheck) {
+        // Group orders by sede for admin view
+        const groupedOrders = orders.reduce((acc: {[key: string]: any[]}, order) => {
+          const sedeName = order.order_sede;
+          if (!acc[sedeName]) {
+            acc[sedeName] = [];
+          }
+          acc[sedeName].push({
+            id: order.order_id,
+            order_number: order.order_number,
+            sede: order.order_sede,
+            created_at: order.order_created_at
+          });
+          return acc;
+        }, {});
+        
+        setOrdersBySede(groupedOrders);
+        setAvailableOrders([]);
+        
+        const totalOrders = orders.length;
+        const sedeCount = Object.keys(groupedOrders).length;
+        toast.success(`Como sede administradora, puedes ver ${totalOrders} órdenes de ${sedeCount} sede(s)`);
+      } else {
+        // Normal sede view - just their orders
+        const normalOrders = orders.map(order => ({
+          id: order.order_id,
+          order_number: order.order_number,
+          sede: order.order_sede,
+          created_at: order.order_created_at
+        }));
+        
+        setAvailableOrders(normalOrders);
+        setOrdersBySede({});
+        toast.success(`Se encontraron ${normalOrders.length} orden(es) de compra`);
+      }
     } catch (error: any) {
       toast.error(`Error al buscar órdenes: ${error.message}`);
       setAvailableOrders([]);
+      setOrdersBySede({});
     } finally {
       setIsLoading(false);
     }
@@ -291,6 +335,8 @@ const ClientPortal = () => {
     setSearchResults([]);
     setAvailableOrders([]);
     setSelectedOrder(null);
+    setIsAdminSede(false);
+    setOrdersBySede({});
   };
 
   // Authentication UI
@@ -505,7 +551,7 @@ const ClientPortal = () => {
               Explorar Órdenes de la Sede
             </CardTitle>
             <CardDescription>
-              Ver todas las órdenes de compra disponibles para {selectedSede}
+              Ver todas las órdenes de compra disponibles. Las sedes administradoras pueden ver órdenes de todas las sedes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -522,8 +568,8 @@ const ClientPortal = () => {
         </Card>
       )}
 
-      {/* Available Orders List */}
-      {searchMode === 'by-sede' && availableOrders.length > 0 && !selectedOrder && (
+      {/* Available Orders List - Normal Sede */}
+      {searchMode === 'by-sede' && availableOrders.length > 0 && !selectedOrder && !isAdminSede && (
         <Card className="max-w-4xl mx-auto shadow-elegant">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -560,6 +606,61 @@ const ClientPortal = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Orders by Sede - Admin Sede View */}
+      {searchMode === 'by-sede' && Object.keys(ordersBySede).length > 0 && !selectedOrder && isAdminSede && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Card className="shadow-elegant">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Vista de Sede Administradora
+              </CardTitle>
+              <CardDescription>
+                Como sede administradora, puedes ver las órdenes de todas las sedes organizadas por ubicación
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          
+          {Object.entries(ordersBySede).map(([sedeName, orders]) => (
+            <Card key={sedeName} className="shadow-elegant">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-secondary" />
+                  {sedeName}
+                </CardTitle>
+                <CardDescription>
+                  {orders.length} orden(es) de compra disponible(s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3">
+                  {orders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      className="flex items-center justify-between p-3 border border-border rounded-lg bg-gradient-subtle hover:shadow-card transition-smooth cursor-pointer"
+                      onClick={() => handleSelectOrder(order)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Receipt className="h-6 w-6 text-primary" />
+                        <div>
+                          <h5 className="font-medium text-foreground text-sm">{order.order_number}</h5>
+                          <p className="text-xs text-muted-foreground">
+                            Creada: {new Date(order.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        Ver Documentos
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Back button when viewing selected order */}
