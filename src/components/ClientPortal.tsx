@@ -158,7 +158,7 @@ const ClientPortal = () => {
 
       const results = documents.map(doc => ({
         id: doc.id,
-        type: doc.file_type === 'orden_compra' ? 'Orden de Compra' : 'Remisión',
+        type: getDocumentTypeLabel(doc.file_type),
         filename: doc.original_filename,
         uploadDate: new Date(doc.created_at).toLocaleDateString(),
         size: formatFileSize(doc.file_size),
@@ -273,7 +273,7 @@ const ClientPortal = () => {
 
       const results = documents.map(doc => ({
         id: doc.id,
-        type: doc.file_type === 'orden_compra' ? 'Orden de Compra' : 'Remisión',
+        type: getDocumentTypeLabel(doc.file_type),
         filename: doc.original_filename,
         uploadDate: new Date(doc.created_at).toLocaleDateString(),
         size: formatFileSize(doc.file_size),
@@ -337,6 +337,17 @@ const ClientPortal = () => {
     setSelectedOrder(null);
     setIsAdminSede(false);
     setOrdersBySede({});
+  };
+
+  // Helper function to get document type label
+  const getDocumentTypeLabel = (fileType: string) => {
+    const typeLabels: { [key: string]: string } = {
+      'orden_compra': 'Orden de Compra',
+      'remision': 'Remisión',
+      'guia_transporte': 'Guía de Transporte',
+      'otros': 'Otros'
+    };
+    return typeLabels[fileType] || fileType;
   };
 
   // Authentication UI
