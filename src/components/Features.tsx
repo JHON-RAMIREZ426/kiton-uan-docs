@@ -1,5 +1,20 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileSearch, Download, Shield, Clock, CircleCheck as CheckCircle, Users } from "lucide-react";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+
+import { 
+  FileSearch, 
+  Download, 
+  Shield, 
+  Clock, 
+  CircleCheck as CheckCircle, 
+  Users, 
+  FileText, 
+  Search 
+} from "lucide-react";
 
 const Features = () => {
   const clientFeatures = [
